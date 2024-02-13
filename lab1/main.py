@@ -52,8 +52,8 @@ class GraphicsEditor:
         self.algorithm_frame.pack(side=TOP, pady=10)
 
     def algorithm_cda(self):
-        x1, y1 = 0, 0
-        x2, y2 = 9, 4
+        x1, y1 = random.randint(0, 10), random.randint(0, 10)
+        x2, y2 = random.randint(0, 10), random.randint(0, 10)
 
         dx = x2 - x1
         dy = y2 - y1
@@ -69,25 +69,7 @@ class GraphicsEditor:
             points.append((round(x1), round(y1)))
             i += 1
 
-        squares = np.zeros((11, 11))
-        for x, y in points:
-            squares[10-y, x] = 1
-
-        fig, ax = plt.subplots()
-        ax.imshow(squares, cmap='gray', interpolation='nearest')
-
-        ax.set_xticks(np.arange(-0.5, squares.shape[1], 1))
-        ax.set_yticks(np.arange(-0.5, squares.shape[0], 1))
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-        ax.grid(color='black', linewidth=0.5)
-        plt.imshow(squares, cmap='binary', interpolation='nearest')
-
-        x_coords, y_coords = zip(*points)
-        plt.plot(x_coords, 10-np.array(y_coords), 'b-')
-
-        plt.title('Отрезок (Целочисленный алгоритм Брезенхема)')
-        plt.show()
+        self.pixel_image(points)
 
     def algorithm_brezenhem(self):
         x1, y1 = random.randint(0, 10), random.randint(0, 10)
@@ -110,19 +92,31 @@ class GraphicsEditor:
             i += 1
             points.append((x1, y1))
 
-        x_coords, y_coords = zip(*points)
-        plt.plot(x_coords, y_coords, 'b-')
-        plt.axhline(0, color='black')
-        plt.axvline(0, color='black')
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.title('Отрезок (Целочисленный алгоритм Брезенхема)')
-        plt.grid(True)
-        plt.show()
+        self.pixel_image(points)
 
     def algorithm_by(self):
         pass
 
+    def pixel_image(self, points):
+
+        squares = np.zeros((11, 11))
+        for x, y in points:
+            squares[y, x] = 1
+
+        fig, ax = plt.subplots()
+        ax.imshow(squares, cmap='binary', interpolation='nearest', origin='lower')
+
+        ax.set_xticks(np.arange(0, 11, 1))
+        ax.set_yticks(np.arange(0, 11, 1))
+        ax.grid(color='black', linewidth=0.5)
+
+        x_coords, y_coords = zip(*points)
+        plt.plot(x_coords, y_coords, color='red', linestyle='-')
+
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.show()
+        
     def cancel(self):
         self.algorithm_frame.pack_forget()
         self.clear_button.pack(side=LEFT, padx=5)
