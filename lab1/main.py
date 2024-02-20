@@ -1,5 +1,4 @@
 import tkinter as tk
-from collections import deque
 
 
 class GraphicsEditor:
@@ -40,10 +39,9 @@ class GraphicsEditor:
         self.debug_mode = False
         self.debug_button = tk.Button(self.master, text="Debug Mode", command=self.toggle_debug)
         self.debug_button.pack(side=tk.LEFT)
-        self.continue_button = tk.Button(self.master, text="Продолжить", command=self.continue_debug)
-        self.continue_button.pack(side=tk.LEFT)
-        self.debug_pixels = deque()
         self.drawn_grid = False
+
+        self.continue_button = tk.Button(self.master, text="Продолжить", command=self.continue_debug)
 
         self.clear_button = tk.Button(self.master, text="Очистить полотно", command=self.clear_canvas)
         self.clear_button.pack(side=tk.RIGHT)
@@ -52,16 +50,11 @@ class GraphicsEditor:
         self.debug_label.pack()
         self.algorithm = "dda"
 
-    def draw_debug_pixel(self):
-        if self.debug_pixels:
-            x, y = self.debug_pixels.popleft()
-            self.canvas.create_rectangle(x * self.pixel_size, y * self.pixel_size,
-                                         (x + 1) * self.pixel_size, (y + 1) * self.pixel_size,
-                                         fill='black')
-            self.master.after(1000, self.draw_debug_pixel)
+        self.debug_points = []
 
     def continue_debug(self):
-        self.draw_debug_pixel()
+        if self.debug_points:
+            self.draw_line(self.debug_points)
 
     def set_algorithm(self, algorithm):
         self.algorithm = algorithm
@@ -74,12 +67,14 @@ class GraphicsEditor:
     def on_second_click(self, event):
         x, y = event.x // self.pixel_size, event.y // self.pixel_size
         if self.algorithm == "dda":
-            self.draw_line_dda(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            points = self.get_points_line_dda(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            self.draw_line(points)
         elif self.algorithm == "bresenham":
-            self.draw_line_bresenham(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            points = self.get_points_line_bresenham(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            self.draw_line(points)
         elif self.algorithm == "wu":
-            self.draw_line_wu(self.first_click_coords[0], self.first_click_coords[1], x, y)
-            self.draw_line_bresenham(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            points = self.get_points_line_wu(self.first_click_coords[0], self.first_click_coords[1], x, y)
+            self.draw_line(points)
         self.canvas.bind("<Button-1>", self.on_first_click)
 
     def toggle_debug(self):
@@ -88,10 +83,12 @@ class GraphicsEditor:
             self.debug_label.config(text="Debug Mode: ON")
             if not self.drawn_grid:
                 self.draw_debug_grid()
+            self.continue_button.pack(side=tk.TOP)
         else:
             self.debug_label.config(text="Debug Mode: OFF")
             if not self.drawn_grid:
                 self.canvas.delete("grid")
+            self.continue_button.pack_forget()
 
     def draw_debug_grid(self):
         for x in range(0, self.canvas_width, self.pixel_size):
@@ -99,37 +96,49 @@ class GraphicsEditor:
         for y in range(0, self.canvas_height, self.pixel_size):
             self.canvas.create_line(0, y, self.canvas_width, y, fill="gray", tags="grid")
 
-    def draw_line_dda(self, x1, y1, x2, y2):
+    def draw_line(self, points):
+        if self.debug_mode:
+            self.debug_points = points
+            x, y, color = self.debug_points.pop(0)
+            self.canvas.create_rectangle(x * self.pixel_size, y * self.pixel_size,
+                                         (x + 1) * self.pixel_size, (y + 1) * self.pixel_size,
+                                         fill=color, outline="")
+        else:
+            for x, y, color in points:
+                self.canvas.create_rectangle(x * self.pixel_size, y * self.pixel_size,
+                                             (x + 1) * self.pixel_size, (y + 1) * self.pixel_size,
+                                             fill=color, outline="")
+
+    @staticmethod
+    def get_points_line_dda(x1, y1, x2, y2):
         dx = x2 - x1
         dy = y2 - y1
         steps = max(abs(dx), abs(dy))
         x_increment = dx / steps
         y_increment = dy / steps
+        color = 'black'
 
+        points = []
         for i in range(steps + 1):
             x = round(x1 + i * x_increment)
             y = round(y1 + i * y_increment)
-            self.canvas.create_rectangle(x * self.pixel_size, y * self.pixel_size,
-                                          (x + 1) * self.pixel_size, (y + 1) * self.pixel_size,
-                                          fill='black')
+            points.append((x, y, color))
 
-        print("Line drawn using DDA algorithm.")
+        return points
 
-    def draw_line_bresenham(self, x1, y1, x2, y2):
+    @staticmethod
+    def get_points_line_bresenham(x1, y1, x2, y2):
         dx = abs(x2 - x1)
         dy = abs(y2 - y1)
         sx = 1 if x1 < x2 else -1
         sy = 1 if y1 < y2 else -1
         err = dx - dy
+        color = 'black'
 
-        self.canvas.create_rectangle(x2 * self.pixel_size, y2 * self.pixel_size,
-                                     (x2 + 1) * self.pixel_size, (y2 + 1) * self.pixel_size,
-                                     fill="black")
+        points = []
 
         while x1 != x2 or y1 != y2:
-            self.canvas.create_rectangle(x1 * self.pixel_size, y1 * self.pixel_size,
-                                         (x1 + 1) * self.pixel_size, (y1 + 1) * self.pixel_size,
-                                         fill="black")
+            points.append((x1, y1, color))
 
             e2 = 2 * err
             if e2 > -dy:
@@ -139,15 +148,15 @@ class GraphicsEditor:
                 err += dx
                 y1 += sy
 
-        print("Line drawn using Bresenham algorithm.")
+        points.append((x2, y2, color))
+        return points
 
-    def draw_line_wu(self, x1, y1, x2, y2):
-        def plot(x, y, c):
-            color = int((1 - c) * 255)
+    @staticmethod
+    def get_points_line_wu(x1, y1, x2, y2):
+        def definition_shade(value):
+            color = int((1 - value) * 255)
             color_hex = '#{:02x}{:02x}{:02x}'.format(color, color, color)
-            self.canvas.create_rectangle(x * self.pixel_size, y * self.pixel_size,
-                                         (x + 1) * self.pixel_size, (y + 1) * self.pixel_size,
-                                         fill=color_hex, outline="")
+            return color_hex
 
         def ipart(x):
             return int(x)
@@ -171,44 +180,45 @@ class GraphicsEditor:
         dy = y2 - y1
         gradient = dy / dx if dx != 0 else 1
 
+        points = []
+
         xend = round(x1)
         yend = y1 + gradient * (xend - x1)
-        xgap = rfpart(x1 + 0.5)
         xpxl1 = xend
         ypxl1 = ipart(yend)
 
         if steep:
-            plot(ypxl1, xpxl1, rfpart(yend) * xgap)
-            plot(ypxl1 + 1, xpxl1, fpart(yend) * xgap)
+            points.append((ypxl1, xpxl1, definition_shade(rfpart(yend))))
+            points.append((ypxl1 + 1, xpxl1, definition_shade(fpart(yend))))
         else:
-            plot(xpxl1, ypxl1, rfpart(yend) * xgap)
-            plot(xpxl1, ypxl1 + 1, fpart(yend) * xgap)
-        intery = yend + gradient
+            points.append((xpxl1, ypxl1, definition_shade(rfpart(yend))))
+            points.append((xpxl1, ypxl1 + 1, definition_shade(fpart(yend))))
 
+        intery = yend + gradient
         xend = round(x2)
         yend = y2 + gradient * (xend - x2)
-        xgap = fpart(x2 + 0.5)
         xpxl2 = xend
         ypxl2 = ipart(yend)
-        if steep:
-            plot(ypxl2, xpxl2, rfpart(yend) * xgap)
-            plot(ypxl2 + 1, xpxl2, fpart(yend) * xgap)
-        else:
-            plot(xpxl2, ypxl2, rfpart(yend) * xgap)
-            plot(xpxl2, ypxl2 + 1, fpart(yend) * xgap)
 
         if steep:
             for x in range(xpxl1 + 1, xpxl2):
-                plot(ipart(intery), x, rfpart(intery))
-                plot(ipart(intery) + 1, x, fpart(intery))
+                points.append((ipart(intery), x, definition_shade(rfpart(intery))))
+                points.append((ipart(intery) + 1, x, definition_shade(fpart(intery))))
                 intery += gradient
         else:
             for x in range(xpxl1 + 1, xpxl2):
-                plot(x, ipart(intery), rfpart(intery))
-                plot(x, ipart(intery) + 1, fpart(intery))
+                points.append((x, ipart(intery), definition_shade(rfpart(intery))))
+                points.append((x, ipart(intery) + 1, definition_shade(fpart(intery))))
                 intery += gradient
 
-        print("Line drawn using Wu algorithm.")
+        if steep:
+            points.append((ypxl2, xpxl2, definition_shade(rfpart(yend))))
+            points.append((ypxl2 + 1, xpxl2, definition_shade(fpart(yend))))
+        else:
+            points.append((xpxl2, ypxl2, definition_shade(rfpart(yend))))
+            points.append((xpxl2, ypxl2 + 1, definition_shade(fpart(yend))))
+
+        return points
 
     def clear_canvas(self):
         if not self.debug_mode:
