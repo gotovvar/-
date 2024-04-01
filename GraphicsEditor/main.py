@@ -9,18 +9,15 @@ class GraphicsEditor:
         self.master = master
         self.master.title("Graphics Editor")
 
-        self.pixel_size = 10
-        self.num_pixels_horizontal = 50
-        self.num_pixels_vertical = 50
+        self.pixel_size = 1
+        self.num_pixels_horizontal = 500
+        self.num_pixels_vertical = 500
 
         self.canvas_width = self.num_pixels_horizontal * self.pixel_size
         self.canvas_height = self.num_pixels_vertical * self.pixel_size
 
         self.canvas = tk.Canvas(self.master, width=self.canvas_width, height=self.canvas_height, bg="white", highlightthickness=0)
         self.canvas.pack()
-
-        self.canvas.bind("<Button-1>", self.on_first_click)
-        self.first_click_coords = None
 
         self.tool_panel = ToolPanel(self.master)
 
